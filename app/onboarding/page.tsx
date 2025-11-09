@@ -31,6 +31,16 @@ export default function OnboardingPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // Check if coming from demo and ensure we start at step 2
+  useEffect(() => {
+    const isDemoOnboarding = localStorage.getItem('demo-onboarding')
+    if (isDemoOnboarding) {
+      setStep(2)
+      // Clear the flag after reading
+      localStorage.removeItem('demo-onboarding')
+    }
+  }, [])
+
   const handleSignUp = async () => {
     setLoading(true)
     try {

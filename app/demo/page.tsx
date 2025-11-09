@@ -10,21 +10,24 @@ export default function DemoPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const createDemoSession = async () => {
-    // Create a mock session without actually authenticating
-    // This is for demo purposes only
+  const startDemoOnboarding = () => {
+    // Set demo mode flag for onboarding
     localStorage.setItem('demo-mode', 'true')
+    localStorage.setItem('demo-onboarding', 'true')
+    
+    // Set minimal demo user data for onboarding
     localStorage.setItem('demo-user', JSON.stringify({
       id: 'demo-user-123',
       email: 'demo@television.app',
       name: 'Demo User',
-      connected_services: ['espn-plus', 'youtube-tv', 'hulu', 'peacock']
+      connected_services: [] // Start with no services selected
     }))
     
     // Also set cookie for middleware
     document.cookie = 'demo-mode=true; path=/; max-age=86400'
     
-    router.push('/dashboard')
+    // Redirect to onboarding at step 2
+    router.push('/onboarding')
   }
 
   return (
@@ -70,7 +73,7 @@ export default function DemoPage() {
             </ul>
           </div>
 
-          <Button onClick={createDemoSession} size="lg" className="w-full text-lg py-6">
+          <Button onClick={startDemoOnboarding} size="lg" className="w-full text-lg py-6">
             <PlayCircle className="mr-2 h-5 w-5" />
             Start Demo Experience
           </Button>
