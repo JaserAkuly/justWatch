@@ -22,11 +22,11 @@ const STREAMING_SERVICES = [
 ]
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(2) // Start at step 2 for demo
   const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [email, setEmail] = useState('demo@television.app') // Pre-fill demo data
+  const [password, setPassword] = useState('demo123') // Pre-fill demo data
+  const [name, setName] = useState('Demo User') // Pre-fill demo data
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set())
   const router = useRouter()
   const supabase = createClient()
@@ -67,28 +67,22 @@ export default function OnboardingPage() {
   const saveServices = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) throw new Error('No user found')
-
-      // Save selected services
-      const services = Array.from(selectedServices).map(serviceId => ({
-        user_id: user.id,
-        service_name: serviceId,
-        connected: true,
+      // Create demo session with selected services
+      localStorage.setItem('demo-mode', 'true')
+      localStorage.setItem('demo-user', JSON.stringify({
+        id: 'demo-user-123',
+        email: 'demo@television.app',
+        name: 'Demo User',
+        connected_services: Array.from(selectedServices)
       }))
-
-      if (services.length > 0) {
-        const { error } = await supabase
-          .from('user_services')
-          .insert(services as any)
-
-        if (error) throw error
-      }
-
+      
+      // Also set cookie for middleware
+      document.cookie = 'demo-mode=true; path=/; max-age=86400'
+      
       setStep(3)
     } catch (error: any) {
-      alert(error.message || 'Error saving services')
+      console.error('Error saving services:', error)
+      alert('Error saving services. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -117,7 +111,7 @@ export default function OnboardingPage() {
             Welcome to Television
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground mt-2">
-            Let's get you set up in just a few steps
+            Connect your streaming services to get started
           </CardDescription>
         </CardHeader>
 
@@ -126,12 +120,10 @@ export default function OnboardingPage() {
           <div className="mb-10">
             <div className="flex justify-between mb-4">
               <div className="text-center">
-                <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                  step >= 1 ? 'gradient-primary text-white' : 'bg-muted text-muted-foreground'
-                }`}>
-                  1
+                <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-semibold transition-all duration-300 gradient-primary text-white">
+                  ✓
                 </div>
-                <span className={`text-sm font-medium ${step >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className="text-sm font-medium text-primary">
                   Account
                 </span>
               </div>
@@ -159,7 +151,7 @@ export default function OnboardingPage() {
             <div className="h-1 bg-muted rounded-full overflow-hidden">
               <div 
                 className="h-full gradient-primary transition-all duration-500 ease-out"
-                style={{ width: `${(step / 3) * 100}%` }}
+                style={{ width: `${((step - 1) / 2) * 100 + 33.33}%` }}
               />
             </div>
           </div>
@@ -235,9 +227,9 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="stagger-item">
               <div className="text-center mb-8">
-                <h3 className="text-xl font-semibold text-foreground mb-2">Connect Your Services</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Connect Your Streaming Services</h3>
                 <p className="text-muted-foreground">
-                  Select the streaming services you have access to. You can change these anytime.
+                  Select which services you have to see personalized game recommendations. Toggle any services to see how it works!
                 </p>
               </div>
               
