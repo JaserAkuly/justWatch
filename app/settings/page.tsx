@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,32 +8,54 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { UserService } from '@/types/database'
-import { Tv2, ArrowLeft, Save, Loader2, User, Link2, Shield } from 'lucide-react'
+import { Tv2, ArrowLeft, Save, Loader2, User, Link2, Shield, Zap, Play, ExternalLink, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { STREAMING_PROVIDERS } from '@/lib/providers/config'
+import { useSearchParams } from 'next/navigation'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-const STREAMING_SERVICES = [
-  { id: 'espn-plus', name: 'ESPN+', description: 'Live sports, original shows, and exclusive content' },
-  { id: 'youtube-tv', name: 'YouTubeTV', description: 'Cable-free live TV with 100+ channels' },
-  { id: 'hulu', name: 'Hulu', description: 'Hit shows, movies, Hulu Originals, and live TV' },
-  { id: 'disney-plus', name: 'Disney+', description: 'Disney, Pixar, Marvel, Star Wars, and National Geographic' },
-  { id: 'peacock', name: 'Peacock', description: 'Live sports, news, and premium entertainment' },
-  { id: 'prime-video', name: 'Prime Video', description: 'Movies, TV shows, and Amazon Originals' },
-  { id: 'directv-stream', name: 'DirecTV Stream', description: 'Live and on-demand TV streaming' },
-  { id: 'sling', name: 'Sling', description: 'Customizable live TV streaming packages' },
-]
+const STREAMING_SERVICES = Object.values(STREAMING_PROVIDERS)
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [services, setServices] = useState<Map<string, boolean>>(new Map())
   const [originalServices, setOriginalServices] = useState<Map<string, boolean>>(new Map())
+  const [connectingProvider, setConnectingProvider] = useState<string | null>(null)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     loadUserAndServices()
-  }, [])
+    
+    // Check for provider callback notifications
+    const providerConnected = searchParams.get('provider_connected')
+    const providerError = searchParams.get('provider_error')
+    
+    if (providerConnected) {
+      setNotification({
+        type: 'success',
+        message: `Successfully connected to ${STREAMING_PROVIDERS[providerConnected]?.name || providerConnected}!`
+      })
+      // Clear URL params
+      router.replace('/settings')
+    } else if (providerError) {
+      const errorMessages = {
+        invalid_request: 'Invalid authentication request. Please try again.',
+        invalid_state: 'Security validation failed. Please try again.',
+        connection_failed: 'Failed to connect to the provider. Please check your account and try again.',
+        unsupported_provider: 'This provider is not yet supported.',
+      }
+      setNotification({
+        type: 'error',
+        message: errorMessages[providerError as keyof typeof errorMessages] || 'Unknown error occurred.'
+      })
+      router.replace('/settings')
+    }
+  }, [searchParams])
 
   const loadUserAndServices = async () => {
     try {
@@ -93,10 +115,81 @@ export default function SettingsPage() {
     }
   }
 
+  const connectProvider = async (providerId: string) => {
+    const provider = STREAMING_PROVIDERS[providerId]
+    
+    if (!provider.isImplemented) {
+      // For mock providers, just enable the service
+      const newServices = new Map(services)
+      newServices.set(providerId, true)
+      setServices(newServices)
+      return
+    }
+
+    if (provider.authType === 'oauth') {
+      setConnectingProvider(providerId)
+      try {
+        // Redirect to OAuth flow
+        window.location.href = `/api/auth/providers/${providerId}`
+      } catch (error) {
+        console.error('Error initiating OAuth:', error)
+        setNotification({
+          type: 'error',
+          message: `Failed to initiate connection to ${provider.name}`
+        })
+        setConnectingProvider(null)
+      }
+    }
+  }
+
+  const disconnectProvider = async (providerId: string) => {
+    if (!user) return
+    
+    const provider = STREAMING_PROVIDERS[providerId]
+    
+    if (!provider.isImplemented) {
+      // For mock providers, just toggle off
+      const newServices = new Map(services)
+      newServices.set(providerId, false)
+      setServices(newServices)
+      return
+    }
+
+    try {
+      // For real providers, revoke the connection
+      const response = await fetch(`/api/auth/providers/${providerId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        const newServices = new Map(services)
+        newServices.set(providerId, false)
+        setServices(newServices)
+        
+        setNotification({
+          type: 'success',
+          message: `Disconnected from ${provider.name}`
+        })
+      } else {
+        throw new Error('Failed to disconnect')
+      }
+    } catch (error) {
+      console.error('Error disconnecting provider:', error)
+      setNotification({
+        type: 'error',
+        message: `Failed to disconnect from ${provider.name}`
+      })
+    }
+  }
+
   const toggleService = (serviceId: string) => {
-    const newServices = new Map(services)
-    newServices.set(serviceId, !newServices.get(serviceId))
-    setServices(newServices)
+    const isConnected = services.get(serviceId)
+    
+    if (isConnected) {
+      disconnectProvider(serviceId)
+    } else {
+      connectProvider(serviceId)
+    }
   }
 
   const hasChanges = () => {
@@ -203,6 +296,17 @@ export default function SettingsPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Notification */}
+        {notification && (
+          <Alert className={`mb-6 ${
+            notification.type === 'success' ? 'border-green-500' : 
+            notification.type === 'error' ? 'border-red-500' : 'border-blue-500'
+          }`}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{notification.message}</AlertDescription>
+          </Alert>
+        )}
         {/* User Profile */}
         <Card className="mb-6">
           <CardHeader>
@@ -264,24 +368,107 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {STREAMING_SERVICES.map(service => (
-                <div
-                  key={service.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex-1">
-                    <Label htmlFor={service.id} className="text-base font-medium cursor-pointer">
-                      {service.name}
-                    </Label>
-                    <p className="text-sm text-gray-600">{service.description}</p>
+              {STREAMING_SERVICES.map(service => {
+                const isConnected = services.get(service.id) || false
+                const isConnecting = connectingProvider === service.id
+                
+                return (
+                  <div
+                    key={service.id}
+                    className={`p-4 border rounded-lg transition-all duration-200 ${
+                      service.isImplemented 
+                        ? 'border-green-200 bg-green-50/30' 
+                        : 'border-gray-200 bg-gray-50/30'
+                    } hover:shadow-md`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="text-2xl">{service.icon}</div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-base font-semibold cursor-pointer">
+                                {service.name}
+                              </Label>
+                              {service.isImplemented ? (
+                                <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                  <Zap className="h-3 w-3" />
+                                  LIVE
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                  <Play className="h-3 w-3" />
+                                  DEMO
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{service.description}</p>
+                            {service.isImplemented && isConnected && (
+                              <p className="text-xs text-green-600 mt-1">
+                                ✓ Authenticated • Live content available
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Features */}
+                        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                          {service.features?.liveGames && <span className="bg-gray-100 px-2 py-1 rounded">Live Games</span>}
+                          {service.features?.onDemand && <span className="bg-gray-100 px-2 py-1 rounded">On Demand</span>}
+                          {service.features?.dvr && <span className="bg-gray-100 px-2 py-1 rounded">DVR</span>}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        {service.isImplemented ? (
+                          <>
+                            {isConnected ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => disconnectProvider(service.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                Disconnect
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => connectProvider(service.id)}
+                                disabled={isConnecting}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                {isConnecting ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Connecting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    Connect
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            {isConnected && (
+                              <div className="flex items-center gap-1 text-xs text-green-600">
+                                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                                Connected
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <Switch
+                            checked={isConnected}
+                            onCheckedChange={() => toggleService(service.id)}
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <Switch
-                    id={service.id}
-                    checked={services.get(service.id) || false}
-                    onCheckedChange={() => toggleService(service.id)}
-                  />
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -309,5 +496,20 @@ export default function SettingsPage() {
         </Card>
       </main>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Tv2 className="h-12 w-12 text-blue-600 animate-pulse mx-auto mb-4" />
+          <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    }>
+      <SettingsPageContent />
+    </Suspense>
   )
 }

@@ -8,18 +8,18 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
-import { Tv2, Check, ChevronRight, Loader2 } from 'lucide-react'
+import { Tv2, Check, ChevronRight, Loader2, Zap, Play } from 'lucide-react'
+import { STREAMING_PROVIDERS } from '@/lib/providers/config'
 
-const STREAMING_SERVICES = [
-  { id: 'espn-plus', name: 'ESPN+', icon: '🏈', description: 'Live sports, originals & exclusives' },
-  { id: 'youtube-tv', name: 'YouTubeTV', icon: '📺', description: 'Live TV with 100+ channels' },
-  { id: 'hulu', name: 'Hulu', icon: '🟢', description: 'Shows, movies & live TV' },
-  { id: 'disney-plus', name: 'Disney+', icon: '🏰', description: 'Disney, Marvel, Star Wars' },
-  { id: 'peacock', name: 'Peacock', icon: '🦚', description: 'NBCUniversal content & sports' },
-  { id: 'prime-video', name: 'Prime Video', icon: '📦', description: 'Movies, shows & originals' },
-  { id: 'directv-stream', name: 'DirecTV Stream', icon: '📡', description: 'Live & on-demand streaming' },
-  { id: 'sling', name: 'Sling', icon: '📻', description: 'Customizable live TV packages' },
-]
+const STREAMING_SERVICES = Object.values(STREAMING_PROVIDERS).map(provider => ({
+  id: provider.id,
+  name: provider.name,
+  icon: provider.icon,
+  description: provider.description,
+  isImplemented: provider.isImplemented,
+  authType: provider.authType,
+  features: provider.features
+}))
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(2) // Start at step 2 for demo
@@ -264,17 +264,37 @@ export default function OnboardingPage() {
                         }`}>
                           {service.icon}
                         </div>
-                        <div>
-                          <div className={`font-semibold ${
-                            selectedServices.has(service.id) ? 'text-white' : 'text-foreground'
-                          }`}>
-                            {service.name}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`font-semibold ${
+                              selectedServices.has(service.id) ? 'text-white' : 'text-foreground'
+                            }`}>
+                              {service.name}
+                            </div>
+                            {service.isImplemented ? (
+                              <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                <Zap className="h-3 w-3" />
+                                LIVE
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
+                                <Play className="h-3 w-3" />
+                                DEMO
+                              </div>
+                            )}
                           </div>
                           <div className={`text-sm ${
                             selectedServices.has(service.id) ? 'text-white/80' : 'text-muted-foreground'
                           }`}>
                             {service.description}
                           </div>
+                          {service.isImplemented && (
+                            <div className={`text-xs mt-1 ${
+                              selectedServices.has(service.id) ? 'text-white/60' : 'text-green-600'
+                            }`}>
+                              ✓ Real authentication • Live content
+                            </div>
+                          )}
                         </div>
                       </div>
                       <Switch

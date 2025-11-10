@@ -53,6 +53,97 @@ export interface Database {
           connected?: boolean
         }
       }
+      provider_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          provider_name: string
+          access_token: string | null
+          refresh_token: string | null
+          expires_at: string | null
+          provider_user_id: string | null
+          provider_email: string | null
+          provider_metadata: any
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider_name: string
+          access_token?: string | null
+          refresh_token?: string | null
+          expires_at?: string | null
+          provider_user_id?: string | null
+          provider_email?: string | null
+          provider_metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider_name?: string
+          access_token?: string | null
+          refresh_token?: string | null
+          expires_at?: string | null
+          provider_user_id?: string | null
+          provider_email?: string | null
+          provider_metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      provider_content: {
+        Row: {
+          id: string
+          provider_name: string
+          content_id: string
+          content_type: string
+          title: string
+          league: string | null
+          teams: any
+          start_time: string | null
+          end_time: string | null
+          deep_link: string | null
+          thumbnail_url: string | null
+          metadata: any
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          provider_name: string
+          content_id: string
+          content_type: string
+          title: string
+          league?: string | null
+          teams?: any
+          start_time?: string | null
+          end_time?: string | null
+          deep_link?: string | null
+          thumbnail_url?: string | null
+          metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          provider_name?: string
+          content_id?: string
+          content_type?: string
+          title?: string
+          league?: string | null
+          teams?: any
+          start_time?: string | null
+          end_time?: string | null
+          deep_link?: string | null
+          thumbnail_url?: string | null
+          metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
