@@ -9,17 +9,9 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { Tv2, Check, ChevronRight, Loader2, Zap, Play } from 'lucide-react'
-import { STREAMING_PROVIDERS } from '@/lib/providers/config'
+import { STREAMING_SERVICES } from '@/lib/providers/sports-aggregator'
 
-const STREAMING_SERVICES = Object.values(STREAMING_PROVIDERS).map(provider => ({
-  id: provider.id,
-  name: provider.name,
-  icon: provider.icon,
-  description: provider.description,
-  isImplemented: provider.isImplemented,
-  authType: provider.authType,
-  features: provider.features
-}))
+const STREAMING_SERVICES_LIST = Object.values(STREAMING_SERVICES)
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(2) // Start at step 2 for demo
@@ -244,7 +236,7 @@ export default function OnboardingPage() {
               </div>
               
               <div className="grid grid-cols-1 gap-3 mb-8">
-                {STREAMING_SERVICES.map((service, index) => (
+                {STREAMING_SERVICES_LIST.map((service, index) => (
                   <div
                     key={service.id}
                     className={`group service-card p-4 rounded-2xl cursor-pointer transition-all duration-300 ${
@@ -271,28 +263,19 @@ export default function OnboardingPage() {
                             }`}>
                               {service.name}
                             </div>
-                            {service.isImplemented ? (
-                              <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                <Zap className="h-3 w-3" />
-                                LIVE
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2 py-1 rounded-full">
-                                <Play className="h-3 w-3" />
-                                DEMO
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                              <Tv2 className="h-3 w-3" />
+                              REDIRECT
+                            </div>
                           </div>
                           <div className={`text-sm ${
                             selectedServices.has(service.id) ? 'text-white/80' : 'text-muted-foreground'
                           }`}>
                             {service.description}
                           </div>
-                          {service.isImplemented && (
-                            <div className={`text-xs mt-1 ${
-                              selectedServices.has(service.id) ? 'text-white/60' : 'text-green-600'
-                            }`}>
-                              ✓ Real authentication • Live content
+                          {selectedServices.has(service.id) && (
+                            <div className="text-xs mt-1 text-white/60">
+                              ✓ Deep links enabled
                             </div>
                           )}
                         </div>

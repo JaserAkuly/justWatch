@@ -10,11 +10,11 @@ import { createClient } from '@/lib/supabase/client'
 import { UserService } from '@/types/database'
 import { Tv2, ArrowLeft, Save, Loader2, User, Link2, Shield, Zap, Play, ExternalLink, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { STREAMING_PROVIDERS } from '@/lib/providers/config'
+import { STREAMING_SERVICES } from '@/lib/providers/sports-aggregator'
 import { useSearchParams } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-const STREAMING_SERVICES = Object.values(STREAMING_PROVIDERS)
+const STREAMING_SERVICES_LIST = Object.values(STREAMING_SERVICES)
 
 function SettingsPageContent() {
   const [user, setUser] = useState<any>(null)
@@ -22,40 +22,13 @@ function SettingsPageContent() {
   const [saving, setSaving] = useState(false)
   const [services, setServices] = useState<Map<string, boolean>>(new Map())
   const [originalServices, setOriginalServices] = useState<Map<string, boolean>>(new Map())
-  const [connectingProvider, setConnectingProvider] = useState<string | null>(null)
-  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     loadUserAndServices()
-    
-    // Check for provider callback notifications
-    const providerConnected = searchParams.get('provider_connected')
-    const providerError = searchParams.get('provider_error')
-    
-    if (providerConnected) {
-      setNotification({
-        type: 'success',
-        message: `Successfully connected to ${STREAMING_PROVIDERS[providerConnected]?.name || providerConnected}!`
-      })
-      // Clear URL params
-      router.replace('/settings')
-    } else if (providerError) {
-      const errorMessages = {
-        invalid_request: 'Invalid authentication request. Please try again.',
-        invalid_state: 'Security validation failed. Please try again.',
-        connection_failed: 'Failed to connect to the provider. Please check your account and try again.',
-        unsupported_provider: 'This provider is not yet supported.',
-      }
-      setNotification({
-        type: 'error',
-        message: errorMessages[providerError as keyof typeof errorMessages] || 'Unknown error occurred.'
-      })
-      router.replace('/settings')
-    }
-  }, [searchParams])
+  }, [])
 
   const loadUserAndServices = async () => {
     try {
@@ -67,7 +40,7 @@ function SettingsPageContent() {
         setUser(demoUser)
         
         const serviceMap = new Map<string, boolean>()
-        STREAMING_SERVICES.forEach(service => {
+        STREAMING_SERVICES_LIST.forEach(service => {
           serviceMap.set(service.id, demoUser.connected_services?.includes(service.id) || false)
         })
         
@@ -95,7 +68,7 @@ function SettingsPageContent() {
       const serviceMap = new Map<string, boolean>()
       
       // Initialize all services as disconnected
-      STREAMING_SERVICES.forEach(service => {
+      STREAMING_SERVICES_LIST.forEach(service => {
         serviceMap.set(service.id, false)
       })
 
@@ -115,81 +88,10 @@ function SettingsPageContent() {
     }
   }
 
-  const connectProvider = async (providerId: string) => {
-    const provider = STREAMING_PROVIDERS[providerId]
-    
-    if (!provider.isImplemented) {
-      // For mock providers, just enable the service
-      const newServices = new Map(services)
-      newServices.set(providerId, true)
-      setServices(newServices)
-      return
-    }
-
-    if (provider.authType === 'oauth') {
-      setConnectingProvider(providerId)
-      try {
-        // Redirect to OAuth flow
-        window.location.href = `/api/auth/providers/${providerId}`
-      } catch (error) {
-        console.error('Error initiating OAuth:', error)
-        setNotification({
-          type: 'error',
-          message: `Failed to initiate connection to ${provider.name}`
-        })
-        setConnectingProvider(null)
-      }
-    }
-  }
-
-  const disconnectProvider = async (providerId: string) => {
-    if (!user) return
-    
-    const provider = STREAMING_PROVIDERS[providerId]
-    
-    if (!provider.isImplemented) {
-      // For mock providers, just toggle off
-      const newServices = new Map(services)
-      newServices.set(providerId, false)
-      setServices(newServices)
-      return
-    }
-
-    try {
-      // For real providers, revoke the connection
-      const response = await fetch(`/api/auth/providers/${providerId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        const newServices = new Map(services)
-        newServices.set(providerId, false)
-        setServices(newServices)
-        
-        setNotification({
-          type: 'success',
-          message: `Disconnected from ${provider.name}`
-        })
-      } else {
-        throw new Error('Failed to disconnect')
-      }
-    } catch (error) {
-      console.error('Error disconnecting provider:', error)
-      setNotification({
-        type: 'error',
-        message: `Failed to disconnect from ${provider.name}`
-      })
-    }
-  }
-
   const toggleService = (serviceId: string) => {
-    const isConnected = services.get(serviceId)
-    
-    if (isConnected) {
-      disconnectProvider(serviceId)
-    } else {
-      connectProvider(serviceId)
-    }
+    const newServices = new Map(services)
+    newServices.set(serviceId, !newServices.get(serviceId))
+    setServices(newServices)
   }
 
   const hasChanges = () => {
@@ -296,17 +198,6 @@ function SettingsPageContent() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Notification */}
-        {notification && (
-          <Alert className={`mb-6 ${
-            notification.type === 'success' ? 'border-green-500' : 
-            notification.type === 'error' ? 'border-red-500' : 'border-blue-500'
-          }`}>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{notification.message}</AlertDescription>
-          </Alert>
-        )}
         {/* User Profile */}
         <Card className="mb-6">
           <CardHeader>
@@ -368,18 +259,13 @@ function SettingsPageContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {STREAMING_SERVICES.map(service => {
+              {STREAMING_SERVICES_LIST.map(service => {
                 const isConnected = services.get(service.id) || false
-                const isConnecting = connectingProvider === service.id
                 
                 return (
                   <div
                     key={service.id}
-                    className={`p-4 border rounded-lg transition-all duration-200 ${
-                      service.isImplemented 
-                        ? 'border-green-200 bg-green-50/30' 
-                        : 'border-gray-200 bg-gray-50/30'
-                    } hover:shadow-md`}
+                    className="p-4 border rounded-lg transition-all duration-200 border-gray-200 bg-gray-50/30 hover:shadow-md"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -390,22 +276,15 @@ function SettingsPageContent() {
                               <Label className="text-base font-semibold cursor-pointer">
                                 {service.name}
                               </Label>
-                              {service.isImplemented ? (
-                                <div className="flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                  <Zap className="h-3 w-3" />
-                                  LIVE
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                  <Play className="h-3 w-3" />
-                                  DEMO
-                                </div>
-                              )}
+                              <div className="flex items-center gap-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                <Tv2 className="h-3 w-3" />
+                                REDIRECT
+                              </div>
                             </div>
                             <p className="text-sm text-gray-600">{service.description}</p>
-                            {service.isImplemented && isConnected && (
+                            {isConnected && (
                               <p className="text-xs text-green-600 mt-1">
-                                ✓ Authenticated • Live content available
+                                ✓ Enabled • Deep links active
                               </p>
                             )}
                           </div>
@@ -413,56 +292,22 @@ function SettingsPageContent() {
                         
                         {/* Features */}
                         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                          {service.features?.liveGames && <span className="bg-gray-100 px-2 py-1 rounded">Live Games</span>}
-                          {service.features?.onDemand && <span className="bg-gray-100 px-2 py-1 rounded">On Demand</span>}
-                          {service.features?.dvr && <span className="bg-gray-100 px-2 py-1 rounded">DVR</span>}
+                          {service.contentTypes.map(type => (
+                            <span key={type} className="bg-gray-100 px-2 py-1 rounded">{type}</span>
+                          ))}
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-end gap-2">
-                        {service.isImplemented ? (
-                          <>
-                            {isConnected ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => disconnectProvider(service.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                Disconnect
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => connectProvider(service.id)}
-                                disabled={isConnecting}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                {isConnecting ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Connecting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    Connect
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                            {isConnected && (
-                              <div className="flex items-center gap-1 text-xs text-green-600">
-                                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                                Connected
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <Switch
-                            checked={isConnected}
-                            onCheckedChange={() => toggleService(service.id)}
-                          />
+                        <Switch
+                          checked={isConnected}
+                          onCheckedChange={() => toggleService(service.id)}
+                        />
+                        {isConnected && (
+                          <div className="flex items-center gap-1 text-xs text-green-600">
+                            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                            Active
+                          </div>
                         )}
                       </div>
                     </div>

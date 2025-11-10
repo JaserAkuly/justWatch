@@ -7,60 +7,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/client'
 import { LiveGame, UserService } from '@/types/database'
-import { Tv2, PlayCircle, Settings, LogOut, Clock, Radio, AlertCircle } from 'lucide-react'
+import { Tv2, PlayCircle, Settings, LogOut, Clock, Radio, AlertCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
+import { STREAMING_SERVICES } from '@/lib/providers/sports-aggregator'
 
-// Rich mock data for demonstration
-const MOCK_GAMES: LiveGame[] = [
-  // Live Games
-  { id: '1', league: 'NBA', match: 'Lakers vs Warriors', network: 'ESPN', app: 'ESPN+', link: 'espn://live/nba-lakers-warriors', start_time: new Date(Date.now() - 45 * 60 * 1000).toISOString(), is_live: true },
-  { id: '2', league: 'NBA', match: 'Celtics vs Heat', network: 'TNT', app: 'Hulu', link: 'hulu://live/nba-celtics-heat', start_time: new Date(Date.now() - 30 * 60 * 1000).toISOString(), is_live: true },
-  { id: '3', league: 'NBA', match: 'Mavericks vs Nuggets', network: 'ABC', app: 'YouTubeTV', link: 'youtubetv://live/nba-mavs-nuggets', start_time: new Date(Date.now() - 15 * 60 * 1000).toISOString(), is_live: true },
-  
-  { id: '4', league: 'NFL', match: 'Cowboys vs Eagles', network: 'FOX', app: 'YouTubeTV', link: 'youtubetv://live/nfl-cowboys-eagles', start_time: new Date(Date.now() - 60 * 60 * 1000).toISOString(), is_live: true },
-  { id: '5', league: 'NFL', match: 'Chiefs vs Raiders', network: 'CBS', app: 'DirecTV Stream', link: 'directv://live/nfl-chiefs-raiders', start_time: new Date(Date.now() - 20 * 60 * 1000).toISOString(), is_live: true },
-  
-  { id: '6', league: 'NHL', match: 'Rangers vs Bruins', network: 'ESPN', app: 'ESPN+', link: 'espn://live/nhl-rangers-bruins', start_time: new Date(Date.now() - 40 * 60 * 1000).toISOString(), is_live: true },
-  { id: '7', league: 'NHL', match: 'Lightning vs Panthers', network: 'TNT', app: 'Hulu', link: 'hulu://live/nhl-lightning-panthers', start_time: new Date(Date.now() - 25 * 60 * 1000).toISOString(), is_live: true },
-  
-  { id: '8', league: 'Soccer', match: 'Man United vs Liverpool', network: 'NBC', app: 'Peacock', link: 'peacock://live/soccer-manutd-liverpool', start_time: new Date(Date.now() - 50 * 60 * 1000).toISOString(), is_live: true },
-  { id: '9', league: 'Soccer', match: 'Chelsea vs Arsenal', network: 'USA', app: 'Disney+', link: 'disney://live/soccer-chelsea-arsenal', start_time: new Date(Date.now() - 35 * 60 * 1000).toISOString(), is_live: true },
-  
-  { id: '10', league: 'MLB', match: 'Yankees vs Red Sox', network: 'FOX', app: 'YouTubeTV', link: 'youtubetv://live/mlb-yankees-redsox', start_time: new Date(Date.now() - 90 * 60 * 1000).toISOString(), is_live: true },
-  
-  // Upcoming Games
-  { id: '11', league: 'NBA', match: 'Bucks vs 76ers', network: 'ESPN', app: 'ESPN+', link: 'espn://live/nba-bucks-sixers', start_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '12', league: 'NBA', match: 'Suns vs Clippers', network: 'TNT', app: 'Hulu', link: 'hulu://live/nba-suns-clippers', start_time: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '13', league: 'NFL', match: 'Packers vs Bears', network: 'NBC', app: 'Peacock', link: 'peacock://live/nfl-packers-bears', start_time: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '14', league: 'NFL', match: 'Bills vs Dolphins', network: 'ESPN', app: 'ESPN+', link: 'espn://live/nfl-bills-dolphins', start_time: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '15', league: 'NHL', match: 'Avalanche vs Stars', network: 'ESPN+', app: 'ESPN+', link: 'espn://live/nhl-avs-stars', start_time: new Date(Date.now() + 2.5 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '16', league: 'Soccer', match: 'Barcelona vs Real Madrid', network: 'ESPN+', app: 'ESPN+', link: 'espn://live/soccer-barca-real', start_time: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '17', league: 'College Football', match: 'Alabama vs Auburn', network: 'CBS', app: 'Prime Video', link: 'primevideo://live/cfb-alabama-auburn', start_time: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(), is_live: false },
-  { id: '18', league: 'College Basketball', match: 'Duke vs UNC', network: 'ESPN', app: 'ESPN+', link: 'espn://live/cbb-duke-unc', start_time: new Date(Date.now() + 3.5 * 60 * 60 * 1000).toISOString(), is_live: false },
-]
-
-const SERVICE_MAP: { [key: string]: string } = {
-  'ESPN+': 'espn-plus',
-  'YouTubeTV': 'youtube-tv',
-  'Hulu': 'hulu',
-  'Disney+': 'disney-plus',
-  'Peacock': 'peacock',
-  'Prime Video': 'prime-video',
-  'DirecTV Stream': 'directv-stream',
-  'Sling': 'sling',
+interface LiveSportsGame {
+  id: string
+  title: string
+  league: string
+  teams: string[]
+  startTime: string
+  isLive: boolean
+  isUpcoming: boolean
+  network: string
+  streamingService: string
+  deepLink: string
+  description?: string
 }
 
 export default function DashboardPage() {
-  const [games, setGames] = useState<LiveGame[]>([])
+  const [games, setGames] = useState<LiveSportsGame[]>([])
   const [userServices, setUserServices] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [selectedLeague, setSelectedLeague] = useState<string>('all')
+  const [lastUpdated, setLastUpdated] = useState<string>('')
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     loadData()
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(() => {
+      refreshSportsContent()
+    }, 5 * 60 * 1000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
@@ -71,9 +54,9 @@ export default function DashboardPage() {
       if (isDemoMode) {
         const demoUser = JSON.parse(localStorage.getItem('demo-user') || '{}')
         setUser(demoUser)
-        setUserServices(new Set(demoUser.connected_services || ['espn-plus', 'youtube-tv', 'hulu', 'peacock']))
-        setGames(MOCK_GAMES)
-        setLoading(false)
+        const services = demoUser.connected_services || Object.keys(STREAMING_SERVICES).slice(0, 4)
+        setUserServices(new Set(services))
+        await loadSportsContent(services)
         return
       }
 
@@ -94,17 +77,51 @@ export default function DashboardPage() {
         .eq('user_id', user.id)
         .eq('connected', true)
 
-      if (services && services.length > 0) {
-        setUserServices(new Set(services.map((s: UserService) => s.service_name)))
-      }
-
-      // For demo, use mock data
-      // In production, you would fetch from: await supabase.from('live_games').select('*').eq('is_live', true)
-      setGames(MOCK_GAMES)
+      const connectedServices = services?.map((s: UserService) => s.service_name) || []
+      setUserServices(new Set(connectedServices))
+      
+      await loadSportsContent(connectedServices)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadSportsContent = async (services: string[]) => {
+    try {
+      const serviceIds = services.length > 0 ? services.join(',') : Object.keys(STREAMING_SERVICES).join(',')
+      const response = await fetch(`/api/sports/live?services=${serviceIds}`)
+      const data = await response.json()
+      
+      if (data.games) {
+        setGames(data.games)
+        setLastUpdated(data.lastUpdated)
+      }
+    } catch (error) {
+      console.error('Error loading sports content:', error)
+    }
+  }
+
+  const refreshSportsContent = async () => {
+    if (refreshing) return
+    
+    setRefreshing(true)
+    try {
+      const serviceIds = Array.from(userServices)
+      const serviceQuery = serviceIds.length > 0 ? serviceIds.join(',') : Object.keys(STREAMING_SERVICES).join(',')
+      
+      const response = await fetch(`/api/sports/live?services=${serviceQuery}&refresh=true`)
+      const data = await response.json()
+      
+      if (data.games) {
+        setGames(data.games)
+        setLastUpdated(data.lastUpdated)
+      }
+    } catch (error) {
+      console.error('Error refreshing sports content:', error)
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -124,25 +141,27 @@ export default function DashboardPage() {
     router.push('/')
   }
 
-  const handleWatchNow = (game: LiveGame) => {
-    const serviceId = SERVICE_MAP[game.app]
-    if (userServices.has(serviceId)) {
-      // Show a realistic demo popup
-      const watchMessage = `🎉 Opening ${game.app} app...\n\n` +
-        `Game: ${game.match}\n` +
+  const handleWatchNow = (game: LiveSportsGame) => {
+    if (userServices.has(game.streamingService)) {
+      // In production: window.location.href = game.deepLink
+      // For MVP demo: Show realistic popup
+      const serviceName = STREAMING_SERVICES[game.streamingService]?.name || game.network
+      const watchMessage = `🎉 Opening ${serviceName} app...\n\n` +
+        `Game: ${game.title}\n` +
         `Network: ${game.network}\n` +
-        `Deep Link: ${game.link}\n\n` +
-        `In production, this would automatically open the ${game.app} app and take you directly to this live game!`
+        `Deep Link: ${game.deepLink}\n\n` +
+        `In production, this would automatically open the ${serviceName} app and take you directly to this live game!\n\n` +
+        `🔗 URL that would open: ${game.deepLink}`
       
       alert(watchMessage)
     } else {
-      alert(`❌ ${game.app} not connected\n\nTo watch this game, please connect ${game.app} in your settings first.`)
+      const serviceName = STREAMING_SERVICES[game.streamingService]?.name || game.network
+      alert(`❌ ${serviceName} not connected\n\nTo watch this game, please connect ${serviceName} in your settings first.`)
     }
   }
 
-  const isServiceConnected = (app: string): boolean => {
-    const serviceId = SERVICE_MAP[app]
-    return userServices.has(serviceId)
+  const isServiceConnected = (streamingService: string): boolean => {
+    return userServices.has(streamingService)
   }
 
   const leagues = ['all', ...new Set(games.map(g => g.league))]
@@ -150,8 +169,8 @@ export default function DashboardPage() {
     ? games 
     : games.filter(g => g.league === selectedLeague)
 
-  const liveGames = filteredGames.filter(g => g.is_live)
-  const upcomingGames = filteredGames.filter(g => !g.is_live)
+  const liveGames = filteredGames.filter(g => g.isLive)
+  const upcomingGames = filteredGames.filter(g => !g.isLive)
 
   if (loading) {
     return (
@@ -183,6 +202,18 @@ export default function DashboardPage() {
               </Badge>
             </div>
             <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={refreshSportsContent}
+                disabled={refreshing}
+                className="hover-lift"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">
+                  {refreshing ? 'Updating...' : 'Refresh'}
+                </span>
+              </Button>
               <Link href="/settings">
                 <Button variant="ghost" size="sm" className="hover-lift hidden sm:flex">
                   <Settings className="h-4 w-4 mr-2" />
@@ -248,20 +279,20 @@ export default function DashboardPage() {
                         {game.league}
                       </Badge>
                     </div>
-                    <CardTitle className="text-lg font-bold text-foreground leading-tight">{game.match}</CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground leading-tight">{game.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between mb-4 p-3 bg-muted/30 rounded-xl">
                       <div className="text-sm text-muted-foreground">
                         <span className="font-semibold text-foreground">{game.network}</span>
                         <span className="mx-2">•</span>
-                        <span className="font-medium">{game.app}</span>
+                        <span className="font-medium">{STREAMING_SERVICES[game.streamingService]?.name || game.network}</span>
                       </div>
-                      {isServiceConnected(game.app) && (
+                      {isServiceConnected(game.streamingService) && (
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       )}
                     </div>
-                    {isServiceConnected(game.app) ? (
+                    {isServiceConnected(game.streamingService) ? (
                       <Button 
                         onClick={() => handleWatchNow(game)} 
                         className="w-full gradient-primary text-white hover-lift glow"
@@ -272,7 +303,7 @@ export default function DashboardPage() {
                     ) : (
                       <Button variant="outline" disabled className="w-full bg-muted/50 text-muted-foreground">
                         <AlertCircle className="mr-2 h-4 w-4" />
-                        Connect {game.app}
+                        Connect {STREAMING_SERVICES[game.streamingService]?.name || game.network}
                       </Button>
                     )}
                   </CardContent>
@@ -298,26 +329,26 @@ export default function DashboardPage() {
                   <CardHeader className="pb-4">
                     <div className="flex justify-between items-start mb-3">
                       <Badge variant="secondary" className="text-xs font-semibold bg-muted/50 text-foreground">
-                        {new Date(game.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(game.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Badge>
                       <Badge variant="outline" className="text-xs font-medium bg-background/50 backdrop-blur-sm">
                         {game.league}
                       </Badge>
                     </div>
-                    <CardTitle className="text-lg font-bold text-foreground leading-tight">{game.match}</CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground leading-tight">{game.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between mb-4 p-3 bg-muted/30 rounded-xl">
                       <div className="text-sm text-muted-foreground">
                         <span className="font-semibold text-foreground">{game.network}</span>
                         <span className="mx-2">•</span>
-                        <span className="font-medium">{game.app}</span>
+                        <span className="font-medium">{STREAMING_SERVICES[game.streamingService]?.name || game.network}</span>
                       </div>
-                      {isServiceConnected(game.app) && (
+                      {isServiceConnected(game.streamingService) && (
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       )}
                     </div>
-                    {isServiceConnected(game.app) ? (
+                    {isServiceConnected(game.streamingService) ? (
                       <Button variant="outline" className="w-full bg-background/50 backdrop-blur-sm hover-lift" disabled>
                         <Clock className="mr-2 h-4 w-4" />
                         Starts Soon
@@ -325,7 +356,7 @@ export default function DashboardPage() {
                     ) : (
                       <Button variant="outline" disabled className="w-full bg-muted/50 text-muted-foreground">
                         <AlertCircle className="mr-2 h-4 w-4" />
-                        Connect {game.app}
+                        Connect {STREAMING_SERVICES[game.streamingService]?.name || game.network}
                       </Button>
                     )}
                   </CardContent>
